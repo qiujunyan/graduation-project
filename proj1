@@ -191,7 +191,6 @@ vector<vector<Point>> ImagePreprocess::cluster(IplImage *CSImage, int *coord)
 	vector<vector<Point>> points(20, vector<Point>(sampleCount));//数组所占空间越大，耗时越长
 	vector<Point>centerPoint(sampleCount);
 
-	int distance;
 	int clusterNum = int(sampleCount / 10);
 
 	int nDistance;
@@ -246,6 +245,7 @@ vector<vector<Point>> ImagePreprocess::drawGrid(IplImage *CSImage, vector<vector
 	Mat srcMat;
 	srcMat = cvarrToMat(CSImage);
 	vector<vector<Point>>fPoint(m_nClusterCount, vector<Point>(4));				//找出四个角点
+	int delta = 2;
 	for (int label = 0; label < m_nClusterCount; label++)
 	{
 		int x_min = point[label][1].x;
@@ -295,6 +295,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 	//图像转化成灰度图                                                                            
 	IplImage *grayImg = cvCreateImage(cvSize(ScaleImage->width, ScaleImage->height), IPL_DEPTH_8U, 1);
 	cvCvtColor(ScaleImage, grayImg, CV_BGR2GRAY);
+	Mat grayImgMat = cvarrToMat(grayImg);
 	float fMax = 0.0;
 	int pixelCount[256];
 	float pixelPro[256];
@@ -344,7 +345,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 		}
 
 		int n = 0;
-		while (n < 1)
+		while (n < 3)
 		{
 			int begin = nThreshold;
 			//大律法求阈值
@@ -401,23 +402,32 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			rect.width = (point[label][1].x - point[label][0].x);
 			rect.height = (point[label][1].y - point[label][0].y);
 
-			Mat grayImgMat = cvarrToMat(grayImg);
+			
 			int c = grayImgMat.cols;
 			int r = grayImgMat.rows;
-			Mat grayImgROI(grayImgMat,rect);
+			Mat grayImgROI(grayImgMat, rect);
 
 			vector<vector<Point>> contours;
 			vector<Vec4i> hierarchy;
 
 			//提取目标图像轮廓
 			findContours(grayImgROI, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
-			grayImgROI =Mat::zeros(rect.size(), CV_8UC1);
+			grayImgROI = Mat::zeros(rect.size(), CV_8UC1);
 			drawContours(grayImgROI, contours, -1, Scalar(255, 255, 255));
-			
+
 			//绘制最小外接矩形
+			vector<RotatedRect> box(contours.size());
+			Point2f rect2[4];
+			for (int i = 0; i<contours.size(); i++)
+			{
+				box[i] = minAreaRect(Mat(contours[i]));  //计算每个轮廓最小外接矩形
+				box[i].points(rect2);  //把最小外接矩形四个端点复制给rect数组
+				for (int j = 0; j<4; j++)
+					line(grayImgROI, rect2[j], rect2[(j + 1) % 4], Scalar(255, 255, 255), 1, 16);  //绘制最小外接矩形每条边
+			}
 		}
 	}
-
+	imshow("grayImgMat", grayImgMat);
 	cvShowImage("binaryImage", grayImg);
 	cvReleaseImage(&grayImg);
 	return grayImg;
@@ -441,8 +451,6 @@ int main()
 	vector<vector<Point>>point(100, vector<Point>(100));
 	IplImage *ScaleImage;
 	IplImage *CS2Image;
-	IplImage *CalIntegImage;
-	IplImage *binaryImage;
 	int *coord = new int[1000];
 
 	begin1 = clock();
