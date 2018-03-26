@@ -1,0 +1,37 @@
+OpenCV中Mat类的图像如何设置ROI
+Mat类表示的图像进行ROI操作有两种方法
+（1）使用拷贝构造函数Mat(constMat& m, const Rect& roi )，矩形roi指定了兴趣区，例如：
+Mat src = imread(“xx.jpg”);
+Mat srcROI( src, Rect(0,0,src.cols/2,src.rows/2));
+srcROI的数据与源图像src共享存储区，所以此后在srcROI上的操作也会作用在源图像src上
+
+(2)使用操作符"()"，即Mat operator () ( const Rect&roi ) const，矩形roi指定了兴趣区，例如：
+Mat src = imread(“xx.jpg”);
+Mat srcROI = src(Rect(0,0,src.cols/2,src.rows/2));
+
+
+Iplimage设置感兴趣区域(ROI)
+关键函数：
+cvSetImageROI( img , cvRect(100,100,150,200) );//选定感兴趣区域
+cvAddS(img,cvScalar(200,0,0),img);//B,G,R
+cvResetImageROI(img);//释放感兴趣区域
+
+#include<highgui.h>
+using namespace std;
+
+char *FileName="mosimosi.jpg";  
+int i,j;
+int main() 
+{
+	IplImage* img = cvLoadImage( FileName , 3 ); 
+
+	cvSetImageROI( img , cvRect(100,100,150,200) );
+	cvAddS(img,cvScalar(200,0,0),img);//B,G,R
+	cvResetImageROI(img);
+	cvNamedWindow("Example1",CV_WINDOW_AUTOSIZE);
+	cvShowImage("Example1",img);
+	cvWaitKey(0);
+	cvReleaseImage( &img );
+	cvDestroyWindow("Example1");
+	return 0;
+}
