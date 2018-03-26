@@ -1,0 +1,125 @@
+<font size="4">/* otsu_2d：二维最大类间方差阈值分割的快速迭代算法   吴一全 */
+#include <iostream>
+#include <cv.h>
+#include <highgui.h>
+
+using namespace std;
+double TwoDimentionOtsu(IplImage *image);
+int main()  
+{ 
+        IplImage* srcImage = cvLoadImage( "E:/image_1/14.bmp",0 ); 
+        assert(NULL != srcImage);
+
+        cvNamedWindow("src",0);
+        cvShowImage("src",srcImage); 
+
+        clock_t start_time=clock();
+
+        //计算最佳阈值 
+        double threshold = TwoDimentionOtsu(srcImage);//70,125
+
+        clock_t end_time=clock();
+        cout<< "Running time is: "<<static_cast<double>(end_time-start_time)/CLOCKS_PER_SEC*1000<<"ms"<<endl;//输出运行时间
+
+        cout << "threshold=" << threshold << endl;
+
+        IplImage* biImage = cvCreateImage(cvGetSize(srcImage),8,1);  
+        //对图像二值化
+        //cvThreshold(srcImage,biImage,255,255, CV_THRESH_OTSU | CV_THRESH_BINARY);
+        cvThreshold(srcImage,biImage,threshold,255, CV_THRESH_BINARY);
+
+        cvNamedWindow("binary",0);  
+        cvShowImage("binary",biImage);  
+
+        cvWaitKey(0);  
+
+        cvReleaseImage(&srcImage);  
+        cvReleaseImage(&biImage);  
+
+        cvDestroyAllWindows();  
+
+        return 0;  
+} 
+double TwoDimentionOtsu(IplImage *image)
+{
+        double t0 = 0, s0 = 0, t = 0, s = 0;
+        int width = image->width;  
+        int height = image->height; 
+        double dHistogram[256][256]={0.0};                                //建立二维灰度直方图  
+        unsigned long sum0 = 0,sum1 = 0;                                //sum0记录所有的像素值的总和,sum1记录3x3窗口的均值的总和
+        uchar* data = (uchar*)image->imageData; 
+        for(int i=0; i<height; i++)  
+        {  
+                for(int j=0; j<width; j++)  
+                {  
+                        unsigned char nData1 = data[i * image->widthStep + j];//nData1记录当前点（i,j）的像素值
+                        sum0 += nData1;
+                        unsigned char nData2 = 0;  //nData2记录以当前点（i,j）为中心三领域像素值的平均值
+                        int nData3 = 0;                                        //nData3记录以当前点（i,j）为中心三领域像素值之和，注意9个值相加可能超过一个字节  
+                        for(int m=i-1; m<=i+1; m++)  
+                        {  
+                                for(int n=j-1; n<=j+1; n++)  
+                                {  
+                                        if((m>=0)&&(m<height)&&(n>=0)&&(n<width))
+                                                nData3 += data[m * image->widthStep + n];
+                                }  
+                        }  
+                        nData2 = (unsigned char)(nData3/9);    //对于越界的索引值进行补零,邻域均值
+                        sum1 += nData2;
+                        dHistogram[nData1][nData2]++;  
+                }  
+        }
+
+        long N = height*width;                //总像素数  
+        t = sum0/N;                                        //图像灰度级均值
+        s = sum1/N;                                        //邻域平均灰度级的均值
+
+        s0 = s;
+        t0 = t; 
+        for(int j=0; j<256; j++)
+                for(int i=0; i<256; i++) 
+                {
+                        dHistogram[i][j] = dHistogram[i][j]/N;  //得到归一化的概率分布 
+                }
+
+                double w0 = 0.0,w1 = 0.0,u0i = 0.0,u1i = 0.0,u0j = 0.0,u1j = 0.0;
+
+                do
+                {
+                        t0 = t;
+                        s0 = s;
+                        w0 = w1 = u0i = u1i = u0j = u1j = 0.0;
+                        for (int i = 0,j; i < 256; i++)
+                        {
+                                for (j = 0; j < s0; j++)
+                                {
+                                        w0 += dHistogram[i][j];
+                                        u0j += dHistogram[i][j] * j;
+                                }
+
+                                for (; j < 256; j++)
+                                {
+                                        w1 += dHistogram[i][j];
+                                        u1j += dHistogram[i][j] * j;
+                                }
+
+                        }
+                        for (int j = 0,i = 0; j < 256; j++)
+                        {
+                                for (i = 0; i < t0; i++)
+                                        u0i += dHistogram[i][j] * i;
+                                for (; i < 256; i++)
+                                        u1i += dHistogram[i][j] * i;
+                        }
+                        u0i /= w0;
+                        u1i /= w1 ;
+                        u0j /= w0;
+                        u1j /= w1;
+
+                        t = (u0i + u1i)/2;
+                        s = (u0j + u1j)/2;
+                }while ( t != t0);//是否可以用这个做为判断条件，有待考究，请高手指点
+
+                return t;//只用t做为阈值，个人也感觉不妥，但没有找到更好的方法，请高手指点
+
+} </font>
