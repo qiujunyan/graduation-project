@@ -14,22 +14,22 @@ using namespace std;
 class ImagePreprocess
 {
 private:
-	int m_nExtSize = 10;														//2*extSize=局部极大值判断窗口大小
-	int m_nDistance = 80;														//cluster时类别之间最大距离
-	int m_nClusterCount = 0;													//cluster分类数
+	int m_nExtSize = 10;							//2*extSize=局部极大值判断窗口大小
+	int m_nDistance = 80;							//cluster时类别之间最大距离
+	int m_nClusterCount = 0;						//cluster分类数
 	int const m_nThreshold = 80;
 public:
 	IplImage* ScaleImg(IplImage *src, float fScale);											//缩放图像
-	IplImage* CalInteg(IplImage *ScaleImage);									//图像积分
-	IplImage* CS(IplImage *CalIntegImage, int c_wndSize, int s_wndSize);		//显著性图计算
-	IplImage* CS2(IplImage *CalIntegImage, int wndSize);						//显著性图计算2
-	bool CalLocalMax(IplImage *CSImage, int rows, int columns);					//局部极大值判断
-	int *MaxValCoord(IplImage *CSImage);										//选出前n个局部极大值像素点的坐标
-	float CalDistance(IplImage *CSImage, int p1, int p2);						//距离求取函数
-	vector<vector<Point>> cluster(IplImage *CSImage, int *coord);				//根据距离聚类
+	IplImage* CalInteg(IplImage *ScaleImage);				//图像积分
+	IplImage* CS(IplImage *CalIntegImage, int c_wndSize, int s_wndSize);	//显著性图计算
+	IplImage* CS2(IplImage *CalIntegImage, int wndSize);			//显著性图计算2
+	bool CalLocalMax(IplImage *CSImage, int rows, int columns);		//局部极大值判断
+	int *MaxValCoord(IplImage *CSImage);					//选出前n个局部极大值像素点的坐标
+	float CalDistance(IplImage *CSImage, int p1, int p2);			//距离求取函数
+	vector<vector<Point>> cluster(IplImage *CSImage, int *coord);		//根据距离聚类
 	vector<vector<Point>> drawGrid(IplImage *CSImage, vector<vector<Point>>point);
-	float FBDiff(IplImage *ROI, int threshold);									//求出当前阈值下前景与背景像素值之差
-	float Otsu_fast(IplImage *clusterImage, vector<vector<Point>>point);		//大律法
+	float FBDiff(IplImage *ROI, int threshold);				//求出当前阈值下前景与背景像素值之差
+	float Otsu_fast(IplImage *clusterImage, vector<vector<Point>>point);	//大律法
 	vector<vector<Point>> imagePreprocess(IplImage *src);
 
 };
