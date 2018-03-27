@@ -1,0 +1,45 @@
+#include "stdafx.h"
+#include "opencv2/opencv.hpp"
+#include "iostream"
+#include <fstream>  
+#include "time.h"
+#include "math.h"
+
+using namespace cv;
+using namespace std;
+
+void main()
+{
+	ofstream outfile("E:\\1.txt");
+	IplImage *image = cvLoadImage("E:\\grayImgROI.jpg",CV_8UC1);
+	int w = image->width;
+	int h = image->height;
+	int pixel;
+	int count[256];
+	Mat histgram;
+	histgram = Mat::zeros(cvSize(600,600), CV_8UC1);
+	for (int i = 0; i < 256; i++)
+		count[i] = 0;
+
+	for (int i = 0; i < h; i++)
+	{
+		for (int j = 0; j < w; j++)
+		{
+			pixel = ((uchar*)(image->imageData+image->widthStep*i))[j];
+			count[pixel]++;
+		}
+	}
+
+	
+	for (int i = 0; i < 256; i++)
+	{
+		line(histgram, Point(i*2,600 ),Point(i*2,600-count[i]), Scalar(255, 255, 255), 1, 16);
+		cout << i << ":" << count[i] << endl;
+		outfile<< i << ":" << count[i] << endl;
+	}
+
+	cvShowImage("image", image);
+	imshow("histgram",histgram);
+
+	cvWaitKey();
+}
