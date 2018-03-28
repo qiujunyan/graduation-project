@@ -353,24 +353,19 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 	Mat grayImgMat = cvarrToMat(grayImg);
 	int label, i, j;
 
-	for (label = 0; label < m_nClusterCount; label++)
+	for (label = 2; label < 3; label++)
 	{
 		bool Ctrl = true;
 		if (Ctrl)
 		{
 			//设置ROI
-			Rect rect;
-			rect.x = point[label][0].x;
-			rect.y = point[label][0].y;
-			rect.width = (point[label][2].x - point[label][0].x);
-			rect.height = (point[label][2].y - point[label][0].y);
-
+			Rect rect(point[label][0].x, point[label][0].y, point[label][2].x - point[label][0].x, point[label][2].y - point[label][0].y);
 
 			Mat grayImgROI(grayImgMat, rect);
 			int kernelSize = 1;
 			Mat element = getStructuringElement(MORPH_RECT, Size(kernelSize, kernelSize));
 
-			threshold(grayImgROI, grayImgROI, 0, 255, CV_THRESH_OTSU);///////////////////////////////////////////////////厉害了，我的哥
+			float t = threshold(grayImgROI, grayImgROI, 0, 255, CV_THRESH_OTSU);///////////////////////////////////////////////////厉害了，我的哥
 			erode(grayImgROI, grayImgROI, element);
 			dilate(grayImgROI, grayImgROI, element);
 			vector<vector<Point>> contours;
