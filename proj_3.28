@@ -1,0 +1,72 @@
+#include "stdafx.h"
+#include "opencv2/opencv.hpp"
+#include "iostream"
+#include <fstream>  
+#include "time.h"
+#include "math.h"
+
+using namespace cv;
+using namespace std;
+
+void main()
+{
+	ofstream outfile("E:\\1.txt");
+	IplImage *image = cvLoadImage("C:\\Users\\Qiujunyan\\Desktop\\test.jpg", CV_8UC1);
+	int w = image->width;
+	int h = image->height;
+	int pixel = 0;
+	int count[256];
+	for (int i = 0; i < 256; i++)
+		count[i] = 0;
+
+	for (int i = 0; i < h; i++)
+		for (int j = 0; j < w; j++)
+		{
+			pixel = ((uchar*)(image->imageData + image->widthStep*i))[j];
+			count[pixel]++;
+		}
+
+	int a = 0;
+	cvThreshold(image, image, 0, 255, CV_THRESH_OTSU);
+	for (int i = 0; i < image->height; i++)
+		for (int j = 0; j < image->width; j++)
+		{
+			if (((uchar*)(image->imageData + image->widthStep*i))[j] == 0)
+				a++;
+		}
+
+	cvShowImage("image", image);
+	cout << a << endl;//a为分界点
+
+	int threshold = 0;
+	for (int i = 0; i < 256; i++)
+	{
+		threshold += count[i];
+		cout << count[i] << endl;
+		if (threshold >= a)
+		{
+			cout << "pixel:" << i << endl;
+			threshold = i;
+			break;
+		}
+	}
+
+
+	Mat histgram;
+	histgram = Mat::zeros(cvSize(600, 600), CV_8UC1);
+
+	for (int i = 0; i < 256; i++)
+	{
+		if (i != threshold)
+		{
+			line(histgram, Point(i * 2, 600), Point(i * 2, 600 - count[i]), Scalar(255, 255, 255), 1, 16);
+		}
+		else
+			line(histgram, Point(i * 2, 600), Point(i * 2, 0), Scalar(255, 255, 255), 1, 16);
+	}
+
+	cvShowImage("image", image);
+	imshow("histgram", histgram);
+
+	cvWaitKey();
+}
