@@ -15,7 +15,7 @@ using namespace std;
 class ImagePreprocess
 {
 private:
-	int m_nExtSize = 15;														//2*extSize=局部极大值判断窗口大小
+	int m_nExtSize = 10;														//2*extSize=局部极大值判断窗口大小
 	int m_nDistance = 75;														//cluster时类别之间最大距离
 	int m_nClusterCount = 0;													//cluster分类数
 	int const m_nThreshold = 200;
@@ -111,7 +111,7 @@ IplImage* ImagePreprocess::CS2(IplImage *CalIntgImage, int wndSize)												/
 	int n = w*h;
 	double pixel_LR;
 	double pixel_UP;
-	int num = wndSize*wndSize*2;
+	int num = wndSize*wndSize * 2;
 
 	IplImage *dst = cvCreateImage(cvGetSize(CalIntgImage), 8, 1);
 	int *srcPixel = new int[n];
@@ -122,24 +122,24 @@ IplImage* ImagePreprocess::CS2(IplImage *CalIntgImage, int wndSize)												/
 			srcPixel[i*w + j] = ((float *)(CalIntgImage->imageData + i*CalIntgImage->widthStep))[j];
 
 
-	for (int i = wndSize+1; i < (h - wndSize); i++)
+	for (int i = wndSize + 1; i < (h - wndSize); i++)
 	{
-		for (int j = wndSize+1; j < (w - wndSize); j++)
+		for (int j = wndSize + 1; j < (w - wndSize); j++)
 		{
 			int pos_i = i + wndSize;
 			int pos_j = j + wndSize;
 			int pos_ii = i - wndSize;
 			int pos_jj = j - wndSize;
-			pixel_LR = abs(srcPixel[pos_i*w + pos_j] - srcPixel[pos_i*w + j] - (srcPixel[pos_i*w + j-1]- srcPixel[pos_i*w + pos_jj-1])
-				- (srcPixel[(pos_ii-1)*w + pos_j] - srcPixel[(pos_ii-1)*w + j]-(srcPixel[(pos_ii-1)*w + j-1]- srcPixel[(pos_ii-1)*w + pos_jj-1]))) / num;
-			pixel_UP = abs(srcPixel[pos_i*w + pos_j] - srcPixel[i*w + pos_j] - (srcPixel[(i-1)*w + pos_j]- srcPixel[(pos_ii-1)*w + pos_j])
-				- (srcPixel[pos_i*w + (pos_jj-1)] - srcPixel[i*w + (pos_jj-1)]-(srcPixel[(i-1)*w + (pos_jj-1)]- srcPixel[(pos_ii-1)*w + (pos_jj-1)]))) / num;
+			pixel_LR = abs(srcPixel[pos_i*w + pos_j] - srcPixel[pos_i*w + j] - (srcPixel[pos_i*w + j - 1] - srcPixel[pos_i*w + pos_jj - 1])
+				- (srcPixel[(pos_ii - 1)*w + pos_j] - srcPixel[(pos_ii - 1)*w + j] - (srcPixel[(pos_ii - 1)*w + j - 1] - srcPixel[(pos_ii - 1)*w + pos_jj - 1]))) / num;
+			pixel_UP = abs(srcPixel[pos_i*w + pos_j] - srcPixel[i*w + pos_j] - (srcPixel[(i - 1)*w + pos_j] - srcPixel[(pos_ii - 1)*w + pos_j])
+				- (srcPixel[pos_i*w + (pos_jj - 1)] - srcPixel[i*w + (pos_jj - 1)] - (srcPixel[(i - 1)*w + (pos_jj - 1)] - srcPixel[(pos_ii - 1)*w + (pos_jj - 1)]))) / num;
 
-			dstPixel[i*w + j].val[0] = 3*(((pixel_LR > pixel_UP) ? pixel_LR : pixel_UP));
+			dstPixel[i*w + j].val[0] = 3 * (((pixel_LR > pixel_UP) ? pixel_LR : pixel_UP));
 			cvSet2D(dst, i, j, dstPixel[i*w + j]);
 		}
 	}
-		
+
 
 
 
@@ -324,19 +324,17 @@ vector<vector<Point>> ImagePreprocess::drawGrid(IplImage *CSImage, vector<vector
 		fPoint[label][0].y = x_min;
 		fPoint[label][0].x = y_min;
 
-		fPoint[label][1].y = x_max;
+		fPoint[label][1].y = x_min;
 		fPoint[label][1].x = y_max;
 
-		fPoint[label][2].y = x_min;
+		fPoint[label][2].y = x_max;
 		fPoint[label][2].x = y_max;
 
 		fPoint[label][3].y = x_max;
 		fPoint[label][3].x = y_min;
 		//cout << label << ":[" << fPoint[label][0].x << "," << fPoint[label][0].y << "],[" << fPoint[label][1].x << "," << fPoint[label][1].y << "]" << endl;
-		line(srcMat, fPoint[label][0], fPoint[label][2], Scalar(255, 255, 255), 1, 16);
-		line(srcMat, fPoint[label][0], fPoint[label][3], Scalar(255, 255, 255), 1, 16);
-		line(srcMat, fPoint[label][1], fPoint[label][2], Scalar(255, 255, 255), 1, 16);
-		line(srcMat, fPoint[label][1], fPoint[label][3], Scalar(255, 255, 255), 1, 16);
+		for(int i=0;i<4;i++)
+			line(srcMat, fPoint[label][i], fPoint[label][(i+1)%4], Scalar(255, 255, 255), 1, 16);
 	}
 
 	imshow("ImagePreprocess", srcMat);
@@ -364,8 +362,8 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			Rect rect;
 			rect.x = point[label][0].x;
 			rect.y = point[label][0].y;
-			rect.width = (point[label][1].x - point[label][0].x);
-			rect.height = (point[label][1].y - point[label][0].y);
+			rect.width = (point[label][2].x - point[label][0].x);
+			rect.height = (point[label][2].y - point[label][0].y);
 
 
 			Mat grayImgROI(grayImgMat, rect);
@@ -381,12 +379,12 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			//提取目标图像轮廓
 			findContours(grayImgROI, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
 			grayImgROI = Mat::zeros(rect.size(), CV_8UC1);
-			//drawContours(grayImgROI, contours, -1, Scalar(255, 255, 255));
+			drawContours(grayImgROI, contours, -1, Scalar(255, 255, 255));
 
 			//绘制最小外接矩形
 			vector<RotatedRect> box(contours.size());
 			Point2f rect2[4];
-			for (int i = 0; i<contours.size(); i++)
+			for (i = 0; i<contours.size(); i++)
 			{
 				if (contourArea(contours[i])>40)
 				{
@@ -431,15 +429,15 @@ int main()
 	cout << "clock1缩放图像:" << end1 - begin1 << endl;
 
 	begin2 = clock();
-	IplImage *CalIntgImage = cvCreateImage(cvGetSize(ScaleImage),32,1);
+	IplImage *CalIntgImage = cvCreateImage(cvGetSize(ScaleImage), 32, 1);
 	CalIntgImage = myClass.CalInteg(ScaleImage);
 	end2 = clock();
-	cout << "clock2积分图像：" << end1 - begin1 << endl;
+	cout << "clock2积分图像：" << end2 - begin2 << endl;
 
 	begin3 = clock();
 	CS2Image = myClass.CS2(CalIntgImage, 1);
 	end3 = clock();
-	cout << "clock3显著性图:" << end2 - begin2 << endl;
+	cout << "clock3显著性图:" << end3 - begin3 << endl;
 	cvShowImage("CS2Image", CS2Image);
 
 	begin4 = clock();
