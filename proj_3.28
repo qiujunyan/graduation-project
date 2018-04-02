@@ -15,12 +15,12 @@ using namespace std;
 class ImagePreprocess
 {
 private:
-	int m_nExtSize = 10;														//2*extSize=局部极大值判断窗口大小
+	int m_nExtSize = 8;															//2*extSize=局部极大值判断窗口大小
 	int m_nDistance = 75;														//cluster时类别之间最大距离
 	int m_nClusterCount = 0;													//cluster分类数
 	int const m_nThreshold = 200;
 public:
-	IplImage* ScaleImg(IplImage *src, float fScale);							//缩放图像
+	IplImage * ScaleImg(IplImage *src, float fScale);							//缩放图像
 	IplImage* CalInteg(IplImage *ScaleImage);									//图像积分
 	IplImage* CS2(IplImage *CalIntegImage, int wndSize);						//显著性图计算2
 	bool CalLocalMax(IplImage *CSImage, int rows, int columns);					//局部极大值判断
@@ -28,7 +28,7 @@ public:
 	float CalDistance(IplImage *CSImage, int p1, int p2);						//距离求取函数
 	vector<vector<Point>> cluster(IplImage *CSImage, int *coord);				//根据距离聚类
 	vector<vector<Point>> drawGrid(IplImage *CSImage, vector<vector<Point>>point);
-	IplImage* Otsu_fast(IplImage *clusterImage, vector<vector<Point>>point);		//大律法
+	IplImage* Otsu_fast(IplImage *clusterImage, vector<vector<Point>>point);	//大律法
 
 };
 
@@ -57,40 +57,40 @@ IplImage* ImagePreprocess::CalInteg(IplImage *ScaleImage)
 
 	int nw = dst->width;
 	int nh = dst->height;
-	CvScalar *srcPixel = new CvScalar[nw*nh];							//原始图像的像素值
-	CvScalar *dstPixel = new CvScalar[nw*nh];							//目标图像的像素值                    
+	int *srcPixel = new int[nw*nh];							//原始图像的像素值
+	int *dstPixel = new int[nw*nh];							//目标图像的像素值                    
 
 	for (int i = 0; i < nh; i++)
 		for (int j = 0; j < nw; j++)
-			srcPixel[i*nw + j] = cvGet2D(ScaleImage, i, j);
+			srcPixel[i*nw + j] = ((uchar*)(srcGray->imageData + srcGray->widthStep*i))[j];
 
-	CvScalar *columnSum = new CvScalar[nw];								//columnSum[j]表示第j列前n行的像素值积分
-	columnSum[0].val[0] = srcPixel[0].val[0];
-	dstPixel[0].val[0] = columnSum[0].val[0];
-	cvSet2D(dst, 0, 0, dstPixel[0]);
+	int *columnSum = new int[nw];								//columnSum[j]表示第j列前n行的像素值积分
+	columnSum[0] = srcPixel[0];
+	dstPixel[0] = columnSum[0];
+	((float*)(dst->imageData + 0 * dst->widthStep))[0] = dstPixel[0];
 
 	//第一行的像素值积分
 	for (int j = 1; j < nw; j++)
 	{
-		columnSum[j].val[0] = srcPixel[j].val[0];
-		dstPixel[j].val[0] = columnSum[j].val[0];
-		dstPixel[j].val[0] += dstPixel[j - 1].val[0];
-		cvSet2D(dst, 0, j, dstPixel[0 * nw + j]);
+		columnSum[j] = srcPixel[j];
+		dstPixel[j] = columnSum[j];
+		dstPixel[j] += dstPixel[j - 1];
+		((float*)(dst->imageData + 0 * dst->widthStep))[j] = dstPixel[0 * nw + j];
 	}
 
 
 	for (int i = 1; i < nh; i++)
 	{
 		//第一列像素积分
-		columnSum[0].val[0] += srcPixel[i*nw].val[0];
-		dstPixel[i*nw].val[0] = columnSum[0].val[0];
-		cvSet2D(dst, i, 0, dstPixel[i * nw]);
+		columnSum[0] += srcPixel[i*nw];
+		dstPixel[i*nw] = columnSum[0];
+		((float*)(dst->imageData + i * dst->widthStep))[0] = dstPixel[i * nw + 0];
 		//其他像素值积分
 		for (int j = 1; j < nw; j++)
 		{
-			columnSum[j].val[0] += srcPixel[i*nw + j].val[0];
-			dstPixel[i*nw + j].val[0] = dstPixel[i*nw + j - 1].val[0] + columnSum[j].val[0];
-			cvSet2D(dst, i, j, dstPixel[i * nw + j]);
+			columnSum[j] += srcPixel[i*nw + j];
+			dstPixel[i*nw + j] = dstPixel[i*nw + j - 1] + columnSum[j];
+			((float*)(dst->imageData + dst->widthStep * i))[j] = dstPixel[i * nw + j];
 		}
 	}
 
@@ -108,21 +108,21 @@ IplImage* ImagePreprocess::CS2(IplImage *CalIntgImage, int wndSize)												/
 {
 	int w = CalIntgImage->width;
 	int h = CalIntgImage->height;
-	int n = w*h;
-	double pixel_LR;
-	double pixel_UP;
-	int num = wndSize*wndSize * 2;
+	int n = w * h;
+	int pixel_LR;
+	int pixel_UP;
+	int num = wndSize * wndSize * 2;
 
 	IplImage *dst = cvCreateImage(cvGetSize(CalIntgImage), 8, 1);
 	int *srcPixel = new int[n];
-	CvScalar *dstPixel = new CvScalar[n];
+	int *dstPixel = new int[n];
 
 	for (int i = 0; i < h; i++)
 		for (int j = 0; j < w; j++)
-			srcPixel[i*w + j] = ((float *)(CalIntgImage->imageData + i*CalIntgImage->widthStep))[j];
+			srcPixel[i*w + j] = ((float *)(CalIntgImage->imageData + i * CalIntgImage->widthStep))[j];
 
 
-	for (int i = wndSize + 1; i < (h - wndSize); i++)
+	for (int i =wndSize + 1; i < (h - wndSize); i++)
 	{
 		for (int j = wndSize + 1; j < (w - wndSize); j++)
 		{
@@ -130,13 +130,15 @@ IplImage* ImagePreprocess::CS2(IplImage *CalIntgImage, int wndSize)												/
 			int pos_j = j + wndSize;
 			int pos_ii = i - wndSize;
 			int pos_jj = j - wndSize;
-			pixel_LR = abs(srcPixel[pos_i*w + pos_j] - srcPixel[pos_i*w + j] - (srcPixel[pos_i*w + j - 1] - srcPixel[pos_i*w + pos_jj - 1])
-				- (srcPixel[(pos_ii - 1)*w + pos_j] - srcPixel[(pos_ii - 1)*w + j] - (srcPixel[(pos_ii - 1)*w + j - 1] - srcPixel[(pos_ii - 1)*w + pos_jj - 1]))) / num;
-			pixel_UP = abs(srcPixel[pos_i*w + pos_j] - srcPixel[i*w + pos_j] - (srcPixel[(i - 1)*w + pos_j] - srcPixel[(pos_ii - 1)*w + pos_j])
-				- (srcPixel[pos_i*w + (pos_jj - 1)] - srcPixel[i*w + (pos_jj - 1)] - (srcPixel[(i - 1)*w + (pos_jj - 1)] - srcPixel[(pos_ii - 1)*w + (pos_jj - 1)]))) / num;
+			pixel_LR = int(abs(srcPixel[pos_i*w + pos_j] - srcPixel[pos_i*w + j] - (srcPixel[pos_i*w + j - 1] - srcPixel[pos_i*w + pos_jj - 1])
+				- (srcPixel[(pos_ii - 1)*w + pos_j] - srcPixel[(pos_ii - 1)*w + j] - (srcPixel[(pos_ii - 1)*w + j - 1] - srcPixel[(pos_ii - 1)*w + pos_jj - 1]))) / num);
+			pixel_UP = int(abs(srcPixel[pos_i*w + pos_j] - srcPixel[i*w + pos_j] - (srcPixel[(i - 1)*w + pos_j] - srcPixel[(pos_ii - 1)*w + pos_j])
+				- (srcPixel[pos_i*w + (pos_jj - 1)] - srcPixel[i*w + (pos_jj - 1)] - (srcPixel[(i - 1)*w + (pos_jj - 1)] - srcPixel[(pos_ii - 1)*w + (pos_jj - 1)]))) / num);
 
-			dstPixel[i*w + j].val[0] = 3 * (((pixel_LR > pixel_UP) ? pixel_LR : pixel_UP));
-			cvSet2D(dst, i, j, dstPixel[i*w + j]);
+			dstPixel[i*w+j] = 3 * (((pixel_LR > pixel_UP) ? pixel_LR : pixel_UP));
+			if (dstPixel[i*w + j] >= 255)
+				dstPixel[i*w + j] = 255;
+			((uchar*)(dst->imageData + i * dst->widthStep))[j] = dstPixel[i*w + j];
 		}
 	}
 
@@ -148,7 +150,7 @@ IplImage* ImagePreprocess::CS2(IplImage *CalIntgImage, int wndSize)												/
 	{
 		for (int j = 0; j < w; j++)
 			if (i <= wndSize || i >= h - wndSize || j <= wndSize || j >= w - wndSize)
-				cvSet2D(dst, i, j, cvScalar(0, 0, 0));
+				((uchar*)(dst->imageData + i * dst->widthStep))[j] = 0;
 	}
 
 	return dst;
@@ -171,7 +173,7 @@ bool ImagePreprocess::CalLocalMax(IplImage *CSImage, int x, int y)		//x,y表示�
 
 	bool State;
 	int Count = 0;
-	int pixel_xy = ((uchar *)(CSImage->imageData + x*CSImage->widthStep))[y];
+	int pixel_xy = ((uchar *)(CSImage->imageData + x * CSImage->widthStep))[y];
 	int *pixel = new int[wndSize];
 
 	if (pixel_xy < m_nThreshold)
@@ -181,7 +183,7 @@ bool ImagePreprocess::CalLocalMax(IplImage *CSImage, int x, int y)		//x,y表示�
 		for (int i = x_begin; i <= x_end; i++)									//考虑到像素点在图像边缘
 			for (int j = y_begin; j <= y_end; j++)
 			{
-				pixel[Count] = ((uchar *)(CSImage->imageData + i*CSImage->widthStep))[j];
+				pixel[Count] = ((uchar *)(CSImage->imageData + i * CSImage->widthStep))[j];
 				if (pixel_xy < pixel[Count])
 					break;
 				Count++;
@@ -209,7 +211,7 @@ int *ImagePreprocess::MaxValCoord(IplImage *CSImage)
 		{
 			if (CalLocalMax(CSImage, i, j))
 			{
-				coord[num] = i*w + j;
+				coord[num] = i * w + j;
 				num++;
 				//cvSet2D(CSImage, i, j, cvScalar(255, 255, 255));
 			}
@@ -225,9 +227,9 @@ int *ImagePreprocess::MaxValCoord(IplImage *CSImage)
 float ImagePreprocess::CalDistance(IplImage *CSImage, int p1, int p2)
 {
 	int w = CSImage->width;
-	int p1_y = p1%w;
+	int p1_y = p1 % w;
 	int p1_x = p1 / w;
-	int p2_y = p2%w;
+	int p2_y = p2 % w;
 	int p2_x = p2 / w;
 	float distance;
 	distance = sqrt(float(pow(p1_x - p2_x, 2) + pow(p1_y - p2_y, 2)));
@@ -331,8 +333,8 @@ vector<vector<Point>> ImagePreprocess::drawGrid(IplImage *CSImage, vector<vector
 		fPoint[label][3].y = x_max;
 		fPoint[label][3].x = y_min;
 		//cout << label << ":[" << fPoint[label][0].x << "," << fPoint[label][0].y << "],[" << fPoint[label][1].x << "," << fPoint[label][1].y << "]" << endl;
-		for(int i=0;i<4;i++)
-			line(srcMat, fPoint[label][i], fPoint[label][(i+1)%4], Scalar(255, 255, 255), 1, 16);
+		for (int i = 0; i<4; i++)
+			line(srcMat, fPoint[label][i], fPoint[label][(i + 1) % 4], Scalar(255, 255, 255), 1, 16);
 	}
 
 	imshow("ImagePreprocess", srcMat);
@@ -360,7 +362,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			Rect rect(point[label][0].x, point[label][0].y, point[label][2].x - point[label][0].x, point[label][2].y - point[label][0].y);
 			Mat grayImgROI(grayImgMat, rect);
 			int size = grayImgROI.rows*grayImgROI.cols;
-			int count[256] = {0},pixel,maxPixel=0; 
+			int count[256] = { 0 }, pixel, maxPixel = 0;
 			for (i = 0; i < grayImgROI.rows; i++)
 			{
 				uchar *p = grayImgROI.ptr<uchar>(i);
@@ -374,7 +376,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 				uchar *p = grayImgROI.ptr<uchar>(i);
 				for (j = 0; j < grayImgROI.cols; j++)
 				{
-					p[j] = int(pow(p[j], 4) / float(pow(maxPixel, 3)));
+					p[j] = int(pow(p[j], 1) / float(pow(maxPixel, 0)));
 					pixel = p[j];
 					count[pixel]++;
 				}
@@ -383,7 +385,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 
 			double mu = 0, scale = 1. / (size);//mu为图像灰度平均值
 			for (i = 0; i < 256; i++)
-				mu += i*(double)count[i];
+				mu += i * (double)count[i];
 			mu *= scale;
 			double mu1 = 0, q1 = 0;
 			double max_sigma = 0, max_val = 0;
@@ -399,9 +401,9 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 				if (std::min(q1, q2) < FLT_EPSILON || std::max(q1, q2) > 1. - FLT_EPSILON)
 					continue;
 
-				mu1 = (mu1 + i*p_i) / q1;
-				mu2 = (mu - q1*mu1) / q2;
-				sigma = q1*q2*(mu1 - mu2)*(mu1 - mu2);
+				mu1 = (mu1 + i * p_i) / q1;
+				mu2 = (mu - q1 * mu1) / q2;
+				sigma = q1 * q2*(mu1 - mu2)*(mu1 - mu2);
 				if (sigma > max_sigma)
 				{
 					max_sigma = sigma;
@@ -411,7 +413,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			int nThreshold = max_val;
 
 			//腐蚀膨胀
-			int kernelSize = 2;
+			int kernelSize = 1;
 			Mat element = getStructuringElement(MORPH_RECT, Size(kernelSize, kernelSize));
 			erode(grayImgROI, grayImgROI, element);
 			dilate(grayImgROI, grayImgROI, element);
@@ -429,10 +431,10 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			Point2f rect2[4];
 			for (i = 0; i<contours.size(); i++)
 			{
-					box[i] = minAreaRect(Mat(contours[i]));  //计算每个轮廓最小外接矩形
-					box[i].points(rect2);  //把最小外接矩形四个端点复制给rect数组
-					for (int j = 0; j<4; j++)
-						line(grayImgROI, rect2[j], rect2[(j + 1) % 4], Scalar(255), 1, 4);  //绘制最小外接矩形每条边
+				box[i] = minAreaRect(Mat(contours[i]));  //计算每个轮廓最小外接矩形
+				box[i].points(rect2);  //把最小外接矩形四个端点复制给rect数组
+				for (int j = 0; j<4; j++)
+					line(grayImgROI, rect2[j], rect2[(j + 1) % 4], Scalar(255), 1, 4);  //绘制最小外接矩形每条边
 			}
 		}
 	}
@@ -456,8 +458,9 @@ int main()
 
 
 	ImagePreprocess myClass;
-	IplImage *src = cvLoadImage("E:\\毕业设计\\图像\\quan\\c0.jpg");
-	//IplImage *src = cvLoadImage("C:\\Users\\Qiujunyan\\Desktop\\毕业设计\\毕业设计\\212fortest\\s0.jpg");
+	//IplImage *src = cvLoadImage("F:\\proj\\image\\212fortest\\s0.jpg");
+	//IplImage *src = cvLoadImage("F:\\proj\\image\\提不到\\s20.jpg");
+	IplImage *src = cvLoadImage("F:\\proj\\image\\quan\\c0.jpg");
 	vector<vector<Point>>point(100, vector<Point>(100));
 	IplImage *ScaleImage;
 	IplImage *CS2Image;
