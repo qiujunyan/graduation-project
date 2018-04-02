@@ -181,13 +181,17 @@ bool ImagePreprocess::CalLocalMax(IplImage *CSImage, int x, int y)		//x,y表示�
 	else
 	{
 		for (int i = x_begin; i <= x_end; i++)									//考虑到像素点在图像边缘
+		{
+			uchar *p = ((uchar *)(CSImage->imageData + i * CSImage->widthStep));
 			for (int j = y_begin; j <= y_end; j++)
 			{
-				pixel[Count] = ((uchar *)(CSImage->imageData + i * CSImage->widthStep))[j];
+				pixel[Count] = p[j];
 				if (pixel_xy < pixel[Count])
 					break;
 				Count++;
 			}
+		}
+			
 		if (Count >= wndSize)
 			State = true;
 		else
@@ -213,10 +217,9 @@ int *ImagePreprocess::MaxValCoord(IplImage *CSImage)
 			{
 				coord[num] = i * w + j;
 				num++;
-				//cvSet2D(CSImage, i, j, cvScalar(255, 255, 255));
 			}
 			else
-				cvSet2D(CSImage, i, j, cvScalar(0, 0, 0));
+				((uchar*)(CSImage->imageData+i*CSImage->widthStep))[j]=0;
 		}
 	}
 	coord[0] = num;
@@ -413,7 +416,7 @@ IplImage* ImagePreprocess::Otsu_fast(IplImage *ScaleImage, vector<vector<Point>>
 			int nThreshold = max_val;
 
 			//腐蚀膨胀
-			int kernelSize = 1;
+			int kernelSize = 3;
 			Mat element = getStructuringElement(MORPH_RECT, Size(kernelSize, kernelSize));
 			erode(grayImgROI, grayImgROI, element);
 			dilate(grayImgROI, grayImgROI, element);
@@ -459,8 +462,8 @@ int main()
 
 	ImagePreprocess myClass;
 	//IplImage *src = cvLoadImage("F:\\proj\\image\\212fortest\\s0.jpg");
-	//IplImage *src = cvLoadImage("F:\\proj\\image\\提不到\\s20.jpg");
-	IplImage *src = cvLoadImage("F:\\proj\\image\\quan\\c0.jpg");
+	IplImage *src = cvLoadImage("F:\\proj\\image\\提不到\\s0.jpg");
+	//IplImage *src = cvLoadImage("F:\\proj\\image\\quan\\c20.jpg");
 	vector<vector<Point>>point(100, vector<Point>(100));
 	IplImage *ScaleImage;
 	IplImage *CS2Image;
